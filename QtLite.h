@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include "GlyphRaster.h"
 
 namespace ql
 {
@@ -65,6 +66,11 @@ namespace ql
         void* (*QPixmap_ctor)(void*, int, int) = nullptr;
         void  (*QPixmap_dtor)(void*) = nullptr;
         void  (*QPixmap_fill)(void*, const void*) = nullptr;
+        bool  (*QPixmap_convertFromImage)(void*, const void*, int) = nullptr;
+        void* (*QImage_ctor)(void*, int, int, int) = nullptr;   // (w, h, format): owns its pixels
+        unsigned char* (*QImage_bits)(void*) = nullptr;
+        int   (*QImage_bytesPerLine)(const void*) = nullptr;
+        void  (*QImage_dtor)(void*) = nullptr;
         void* (*QPainter_ctor)(void*, void*) = nullptr;
         void  (*QPainter_dtor)(void*) = nullptr;
         void  (*QPainter_setRenderHint)(void*, int, bool) = nullptr;
@@ -250,6 +256,11 @@ namespace ql
         Res(a.QPixmap_ctor, G, "??0QPixmap@@QEAA@HH@Z");
         Res(a.QPixmap_dtor, G, "??1QPixmap@@UEAA@XZ");
         Res(a.QPixmap_fill, G, "?fill@QPixmap@@QEAAXAEBVQColor@@@Z");
+        Res(a.QPixmap_convertFromImage, G, "?convertFromImage@QPixmap@@QEAA_NAEBVQImage@@V?$QFlags@W4ImageConversionFlag@Qt@@@@@Z");
+        Res(a.QImage_ctor, G, "??0QImage@@QEAA@HHW4Format@0@@Z");
+        Res(a.QImage_bits, G, "?bits@QImage@@QEAAPEAEXZ");
+        Res(a.QImage_bytesPerLine, G, "?bytesPerLine@QImage@@QEBAHXZ");
+        Res(a.QImage_dtor, G, "??1QImage@@UEAA@XZ");
         Res(a.QPainter_ctor, G, "??0QPainter@@QEAA@PEAVQPaintDevice@@@Z");
         Res(a.QPainter_dtor, G, "??1QPainter@@QEAA@XZ");
         Res(a.QPainter_setRenderHint, G, "?setRenderHint@QPainter@@QEAAXW4RenderHint@1@_N@Z");
@@ -490,6 +501,27 @@ namespace ql
         out.live = true;
         if (a.QPixmap_dtor) a.QPixmap_dtor(pix.p());
         return true;
+    }
+
+    // One of Radiance's own glyphs (RadianceIcons.h, drawn by GlyphRaster.h) as a size x size icon in `rgb`.
+    inline bool MakeRadianceIcon(Icon& out, const char* name, uint32_t rgb, int size = 16)
+    {
+        Api& a = A();
+        const radiance_icons::Glyph* g = glyph::Find(name);
+        if (out.live || !g || !Ready() || !a.QPixmap_ctor || !a.QPixmap_convertFromImage || !a.QImage_ctor || !a.QImage_bits || !a.QImage_bytesPerLine || !a.QImage_dtor || !a.QIcon_ctorPixmap) return false;
+        std::vector<uint8_t> px; glyph::Render(*g, size, rgb, px);
+        // The image owns its pixels: a QPixmap built from it may share them, so they must outlive this call.
+        Buf img; a.QImage_ctor(img.p(), size, size, 6 /* Format_ARGB32_Premultiplied (Qt 5: Invalid 0, Mono 1, MonoLSB 2, Indexed8 3, RGB32 4, ARGB32 5) */);
+        unsigned char* bits = a.QImage_bits(img.p());
+        int stride = a.QImage_bytesPerLine(img.p());
+        if (!bits || stride < size * 4) { a.QImage_dtor(img.p()); return false; }
+        for (int y = 0; y < size; ++y) memcpy(bits + size_t(y) * stride, px.data() + size_t(y) * size * 4, size_t(size) * 4);
+        Buf pix; a.QPixmap_ctor(pix.p(), size, size);
+        bool ok = a.QPixmap_convertFromImage(pix.p(), img.p(), 0);
+        a.QImage_dtor(img.p());
+        if (ok) { a.QIcon_ctorPixmap(out.b.p(), pix.p()); out.live = true; }
+        if (a.QPixmap_dtor) a.QPixmap_dtor(pix.p());
+        return ok;
     }
 
     // Toolbar glyphs drawn with lines (no icon files): the shapes of Radiance's toolbar icons.

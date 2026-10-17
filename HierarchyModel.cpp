@@ -92,29 +92,29 @@ namespace hm
     // generates from asset types). Keys shared with Radiance's categories keep their names, so groups and
     // assignments stored by Radiance still find them.
     const Category kCategories[] = {
-        { "Prefabs", 0x8DCB3F, 1 },
-        { "Static Models", 0x6FA8F0, 1 },
-        { "Script Models", 0x4FC1FF, 1 },
-        { "Brush Entities", 0xA8B4C0, 1 },
-        { "Lights", 0xF0D25A, 1 },
-        { "Reflection Probes", 0x9CDCFE, 1 },
-        { "Color Grading", 0xE08AE0, 1 },
-        { "Lighting & Fog Volumes", 0xD7BA7D, 1 },
-        { "Visibility & Performance", 0x7FC8A9, 1 },
-        { "Zones", 0x5FD3A0, 1 },
-        { "Player Spawns", 0xE07A9A, 1 },
-        { "AI Spawners", 0xE05A5A, 1 },
-        { "Vehicles", 0xC0A060, 1 },
-        { "AI & Navigation", 0x9AB8E0, 1 },
-        { "Triggers", 0xE0AA3C, 1 },
-        { "Effects", 0xF09A5A, 1 },
-        { "Audio", 0x4EC9B0, 1 },
-        { "Water & Physics", 0x569CD6, 1 },
-        { "Script", 0xC58AE0, 1 },
-        { "Decals", 0xB5CEA8, 1 },
-        { "Editor & Tools", 0x9A9A9A, 1 },
-        { "Volumes", 0x6FB8A0, 1 },
-        { "Other", 0x8A8A8A, 1 },
+        { "Prefabs", 0x8DCB3F, 1, "cube" },
+        { "Static Models", 0x6FA8F0, 1, "cube" },
+        { "Script Models", 0x4FC1FF, 1, "cubeSolid" },
+        { "Brush Entities", 0xA8B4C0, 1, "mesh" },
+        { "Lights", 0xF0D25A, 1, "light" },
+        { "Reflection Probes", 0x9CDCFE, 1, "global" },
+        { "Color Grading", 0xE08AE0, 1, "gradient" },
+        { "Lighting & Fog Volumes", 0xD7BA7D, 1, "cloud" },
+        { "Visibility & Performance", 0x7FC8A9, 1, "eye" },
+        { "Zones", 0x5FD3A0, 1, "grid" },
+        { "Player Spawns", 0xE07A9A, 1, "user" },
+        { "AI Spawners", 0xE05A5A, 1, "user" },
+        { "Vehicles", 0xC0A060, 1, "gear" },
+        { "AI & Navigation", 0x9AB8E0, 1, "link" },
+        { "Triggers", 0xE0AA3C, 1, "trigger" },
+        { "Effects", 0xF09A5A, 1, "bolt" },
+        { "Audio", 0x4EC9B0, 1, "audio" },
+        { "Water & Physics", 0x569CD6, 1, "curve" },
+        { "Script", 0xC58AE0, 1, "script" },
+        { "Decals", 0xB5CEA8, 1, "texture" },
+        { "Editor & Tools", 0x9A9A9A, 1, "sliders" },
+        { "Volumes", 0x6FB8A0, 1, "layers" },
+        { "Other", 0x8A8A8A, 1, "tag" },
     };
     const size_t kCategoryCount = sizeof kCategories / sizeof kCategories[0];
     const char* const kPinnedClasses[4] = { "worldspawn", "volume_sun", "umbra_volume", "volume_fpstool" };
@@ -137,6 +137,15 @@ namespace hm
         if (c == "volume_sun") return 0xF0C040;
         if (c == "umbra_volume") return 0x7FC8A9;
         return 0x9AB8E0;
+    }
+
+    const char* PinnedIcon(const std::string& className)
+    {
+        std::string c = Lower(className);
+        if (c == "worldspawn") return "global";
+        if (c == "volume_sun") return "light";
+        if (c == "umbra_volume") return "layers";
+        return "camera";
     }
     static int PinnedRank(const std::string& className)
     {
@@ -282,7 +291,7 @@ namespace hm
     Tree Build(const std::string& mapName, const std::vector<Entity>& entities, const GroupState& state)
     {
         Tree t;
-        Node root; root.kind = Kind::Map; root.name = mapName; root.className = "map"; root.color = kMapColor; root.shape = 1; root.expanded = true;
+        Node root; root.kind = Kind::Map; root.name = mapName; root.className = "map"; root.color = kMapColor; root.shape = 1; root.icon = "global"; root.expanded = true;
         t.nodes.push_back(root);
 
         // Custom groups first (sorted), then the built-in categories; each inside the group the user put it in.
@@ -292,12 +301,12 @@ namespace hm
         std::vector<int> groups;
         for (const std::string& g : custom)
         {
-            Node n; n.kind = Kind::Group; n.name = g; n.key = g; n.custom = true; n.color = kCustomGroupColor; n.shape = 2; n.expanded = true;
+            Node n; n.kind = Kind::Group; n.name = g; n.key = g; n.custom = true; n.color = kCustomGroupColor; n.shape = 2; n.icon = "folder"; n.expanded = true;
             groups.push_back(static_cast<int>(t.nodes.size())); t.nodes.push_back(n);
         }
         for (const Category& c : kCategories)
         {
-            Node n; n.kind = Kind::Group; n.name = c.key; n.key = c.key; n.color = c.color; n.shape = c.shape;
+            Node n; n.kind = Kind::Group; n.name = c.key; n.key = c.key; n.color = c.color; n.shape = c.shape; n.icon = c.icon;
             groups.push_back(static_cast<int>(t.nodes.size())); t.nodes.push_back(n);
         }
         for (int g : groups) t.byGroup[t.nodes[g].key] = g;
@@ -321,6 +330,7 @@ namespace hm
             Node n; n.kind = Kind::Entity; n.name = e.name; n.guid = e.guid; n.className = e.className; n.entity = static_cast<int>(i);
             n.pinned = pinned; n.shape = 0;
             n.color = pinned ? PinnedColor(e.className) : CategoryOf(category).color;
+            n.icon = pinned ? PinnedIcon(e.className) : CategoryOf(category).icon;
             int node = static_cast<int>(t.nodes.size());
             t.nodes.push_back(n);
             int group = 0;   // map settings stay at the top

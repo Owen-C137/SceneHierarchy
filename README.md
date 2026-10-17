@@ -98,8 +98,10 @@ button.
 - **The eye is a check box in the right-hand column.** Radiance draws an eye icon button. A Qt item check box is
   what Radiant's Qt tree offers without custom painting. It behaves the same: checked means shown, partial means
   partly hidden, and clicking it toggles.
-- **Icons are coloured dots and squares** (custom groups get a gold folder) in each category's colour, instead of
-  Radiance's vector icons. Radiant's Qt has no access to Radiance's icon set.
+- **Icons are Radiance's own glyphs**, redrawn with Qt. Radiant's Qt cannot load Radiance's icons, so the vector paths
+  from Radiance's `IconData.cs` are kept in `RadianceIcons.h` (made by `Generate-RadianceIcons.ps1`) and rasterised by
+  `GlyphRaster.h` (1.3 stroke, round caps, 16x16 grid) into each row's colour. They are bitmaps at 16 px, so they look
+  close to, not identical to, Avalonia's rendering. If Qt cannot draw one the row falls back to a coloured dot or square.
 - **While you drag, Qt's own drop indicator shows the target** (a line between rows or a box around a row) instead of
   Radiance's blue row highlight. The drop always lands in the row under the cursor, as in Radiance, and invalid
   targets show the no-drop cursor.

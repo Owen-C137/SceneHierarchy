@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0 (2026-10-17)
+
+- **Radiance's own icons.** Rows and toolbar buttons now use the same vector glyphs as the Radiance editor (cube,
+  light, folder, trigger, bolt, mesh and so on) instead of coloured dots and squares. The glyphs come from Radiance's
+  `IconData.cs` (`Generate-RadianceIcons.ps1` writes `RadianceIcons.h`) and are drawn by `GlyphRaster.h`, with the
+  same 1.3 stroke, round caps and 16x16 design grid. Each category has a glyph in its colour; the map is a globe, custom
+  groups are folders, and the map's settings rows use Radiance's pinned icons.
+- If Qt cannot draw a glyph the old dots, squares and folders are used.
+- New unit checks cover every glyph (parsing, bounds, rendering).
+
 ## 1.0.0 (2026-10-17)
 
 First release.

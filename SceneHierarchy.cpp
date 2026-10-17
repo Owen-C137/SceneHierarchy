@@ -104,15 +104,16 @@ namespace
     bool g_hDown = false;
 
     // ---- icons ------------------------------------------------------------------------------------------------------
-    std::map<std::pair<uint32_t, int>, ql::Icon*> g_icons;
+    std::map<std::pair<uint32_t, std::string>, ql::Icon*> g_icons;
     ql::Icon g_glyphPlus, g_glyphEye, g_glyphExpand, g_glyphCollapse;
-    const ql::Icon* IconFor(uint32_t color, int shape)
+    // A row's icon: Radiance's glyph of that name in the row's colour; the old dot / square / folder if Qt cannot draw it.
+    const ql::Icon* IconFor(uint32_t color, const char* glyphName, int shape)
     {
-        auto key = std::make_pair(color, shape);
+        auto key = std::make_pair(color, std::string(glyphName ? glyphName : ""));
         auto it = g_icons.find(key);
         if (it != g_icons.end()) return it->second;
         auto* icon = new ql::Icon();
-        ql::MakeIcon(*icon, color, shape);
+        if (!ql::MakeRadianceIcon(*icon, glyphName, color)) ql::MakeIcon(*icon, color, shape);
         g_icons[key] = icon;
         return icon;
     }
@@ -514,7 +515,7 @@ namespace
         ql::TreeItemText(item, 1, n.Detail());
         g_items[node] = item;
         rp::host->ui->TreeSetItemId(item, int64_t(node) + 1);
-        ql::TreeItemIcon(item, 0, *IconFor(n.color, n.shape));
+        ql::TreeItemIcon(item, 0, *IconFor(n.color, n.icon, n.shape));
         // flags: selectable 1, drag 4, drop 8, user checkable 16, enabled 32; the map and its settings cannot be dragged
         int flags = 1 | 8 | 16 | 32;
         if (n.kind != hm::Kind::Map && !n.pinned) flags |= 4;
@@ -926,11 +927,11 @@ namespace
     // ===============================================================================================================
     // Pane
     // ===============================================================================================================
-    ModToolsWidget ToolButton(const char* fallbackText, ql::Icon& icon, ql::Glyph glyph, const char* tip, ModToolsCallback fn, ModToolsWidget box)
+    ModToolsWidget ToolButton(const char* fallbackText, ql::Icon& icon, const char* radianceGlyph, ql::Glyph glyph, const char* tip, ModToolsCallback fn, ModToolsWidget box)
     {
         const ModToolsUiApi* ui = rp::host->ui;
         ModToolsWidget b = ui->PushButton("", g_root);
-        if (ql::MakeGlyph(icon, glyph) && ql::SetButtonIcon(b, icon)) { if (ql::A().QWidget_setFixedWidth) ql::A().QWidget_setFixedWidth(b, 26); }
+        if ((ql::MakeRadianceIcon(icon, radianceGlyph, 0xC8C8C8) || ql::MakeGlyph(icon, glyph)) && ql::SetButtonIcon(b, icon)) { if (ql::A().QWidget_setFixedWidth) ql::A().QWidget_setFixedWidth(b, 26); }
         else ui->SetButtonText(b, fallbackText);
         ui->SetToolTip(b, tip);
         rp::host->OnClicked(rp::self, b, fn, nullptr);
@@ -950,14 +951,14 @@ namespace
         // toolbar: create group, search, show everything hidden, expand all, collapse all
         ModToolsWidget bar = ui->HBox();
         ui->LayoutSpacing(bar, 3);
-        g_addButton = ToolButton("+", g_glyphPlus, ql::Glyph::Plus, "Create a custom hierarchy group", OnAddClicked, bar);
+        g_addButton = ToolButton("+", g_glyphPlus, "plus", ql::Glyph::Plus, "Create a custom hierarchy group", OnAddClicked, bar);
         g_search = ui->LineEdit("", g_root);
         ui->SetPlaceholder(g_search, "Search name, class or key value...");
         ui->BoxAddWidget(bar, g_search, 1);
-        g_showHidden = ToolButton("Unhide", g_glyphEye, ql::Glyph::EyeOff, "Show everything hidden (Radiant's Show Hidden, Shift+H)", OnShowHiddenClicked, bar);
+        g_showHidden = ToolButton("Unhide", g_glyphEye, "eyeOff", ql::Glyph::EyeOff, "Show everything hidden (Radiant's Show Hidden, Shift+H)", OnShowHiddenClicked, bar);
         ui->SetEnabled(g_showHidden, 0);
-        ToolButton("Expand", g_glyphExpand, ql::Glyph::ExpandAll, "Expand all groups", OnExpandClicked, bar);
-        ToolButton("Collapse", g_glyphCollapse, ql::Glyph::CollapseAll, "Collapse all groups", OnCollapseClicked, bar);
+        ToolButton("Expand", g_glyphExpand, "expandAll", ql::Glyph::ExpandAll, "Expand all groups", OnExpandClicked, bar);
+        ToolButton("Collapse", g_glyphCollapse, "collapseAll", ql::Glyph::CollapseAll, "Collapse all groups", OnCollapseClicked, bar);
         ui->BoxAddLayout(v, bar, 0);
 
         // the tree: name (with icon) | class or count | eye

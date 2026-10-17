@@ -32,13 +32,14 @@ namespace hm
     std::string EntityName(const KeyValues& keys);
     std::string FindKey(const KeyValues& keys, const char* key);
 
-    struct Category { const char* key; uint32_t color; int shape; };   // shape: 0 dot, 1 square, 2 folder
+    struct Category { const char* key; uint32_t color; int shape; const char* icon; };   // shape: 0 dot, 1 square, 2 folder; icon: a Radiance glyph name (RadianceIcons.h)
     extern const Category kCategories[];
     extern const size_t kCategoryCount;   // the last category is "Other"
     extern const char* const kPinnedClasses[4];
     extern const char* const kPinnedGroup;            // "@map"
     const Category& CategoryOf(const std::string& key);
     uint32_t PinnedColor(const std::string& className);
+    const char* PinnedIcon(const std::string& className);   // Radiance's PinnedIcon: the glyph of a map-settings row
     std::string Classify(const Entity& e);            // a category key, or kPinnedGroup
     bool IsBuiltInGroup(const std::string& key);
     constexpr uint32_t kCustomGroupColor = 0xD6B05C, kMapColor = 0x78AEF0;
@@ -59,7 +60,7 @@ namespace hm
         Kind kind = Kind::Entity;
         std::string name, key, guid, className;   // key: group key; guid: entity GUID
         bool custom = false, pinned = false;
-        uint32_t color = 0; int shape = 0;
+        uint32_t color = 0; int shape = 0; const char* icon = "tag";
         int parent = -1;
         std::vector<int> children;
         int entity = -1;                          // index into the entity list
